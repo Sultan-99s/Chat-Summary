@@ -28,9 +28,6 @@ def parse_chat(path: str):
 
 
 def build_pairs(messages):
-    """
-    Groups the flat list into [(user_msg, ai_msg), …].
-    """
     pairs = []
     user_msg = None
     for speaker, text in messages:
@@ -59,9 +56,6 @@ def compute_stats(pairs):
 
 STOPWORDS = set(stopwords.words("english"))
 
-import re
-from collections import Counter
-from nltk.corpus import stopwords
 
 def top_keywords(pairs, n=5):
     """
