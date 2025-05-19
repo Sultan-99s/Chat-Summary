@@ -8,25 +8,22 @@ from transformers import pipeline
 
 
 def parse_chat(path: str):
-    """
-    Reads the .txt file and returns a list of (speaker, message) tuples.
-    """
     messages = []
     with open(path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
-            if not line: 
+            if not line:
                 continue
-            if line.startswith("User:"):
-                text = line[len("User:"):].strip()
+            low = line.lower()
+            if low.startswith("user:"):
+                text = line[line.index(":")+1:].strip()
                 messages.append(("User", text))
-            elif line.startswith("AI:"):
-                text = line[len("AI:"):].strip()
+            elif low.startswith("ai:"):
+                text = line[line.index(":")+1:].strip()
                 messages.append(("AI", text))
             else:
-                if messages:
-                    speaker, prev = messages[-1]
-                    messages[-1] = (speaker, prev + " " + line)
+                # skip completely invalid lines
+                continue
     return messages
 
 
@@ -62,14 +59,20 @@ def compute_stats(pairs):
 
 STOPWORDS = set(stopwords.words("english"))
 
+import re
+from collections import Counter
+from nltk.corpus import stopwords
+
 def top_keywords(pairs, n=5):
     """
-    Tokenize all messages, filter stopwords, return top-n words.
+    Tokenize all messages, filter stopwords and short tokens, return top-n words.
     """
-    all_text = " ".join(u + " " + a for u, a in pairs).lower()
-    # simple tokenization on words
-    words = re.findall(r"\b[a-z']+\b", all_text)
-    filtered = [w for w in words if w not in STOPWORDS]
+    # combine user+AI text
+    all_text = " ".join(u + " " + a for u, a in pairs)
+    # find only real words of length >=2
+    words = re.findall(r"[a-zA-Z]{2,}", all_text)
+    # lowercase and filter stopwords
+    filtered = [w.lower() for w in words if w.lower() not in STOPWORDS]
     counts = Counter(filtered)
     return [word for word, _ in counts.most_common(n)]
 
@@ -82,20 +85,43 @@ def format_summary(stats, keywords):
         f"- Most common keywords: {', '.join(keywords)}."
     )
 
-
-
 summarizer = pipeline(
     "summarization",
     model="facebook/bart-large-cnn",  
     device=0 if torch.cuda.is_available() else -1
 )
 
-def llm_summarize(text: str, max_length: int = 50) -> str:
-    """
-    Returns a very short summary (headline) of the given text.
-    """
-    result = summarizer(text, max_length=max_length, min_length=5, do_sample=False)
-    return result[0]["summary_text"].strip()
+def llm_overview(text: str) -> tuple[str, str]:
+    prompt = (
+        "Please produce:\n"
+        "1. A concise title (3-4 words).\n"
+        "2. A very short summary (2-3 sentences).\n\n"
+        "Conversation:\n"
+        "<<<\n"
+        f"{text}\n"
+        ">>>\n"
+    )
+    # Generate combined title + summary
+    result = summarizer(
+        prompt,
+        max_length=100,
+        min_length=50,
+        do_sample=False
+    )[0]["summary_text"].strip()
+
+    # Split into lines and extract parts
+    lines = [line.strip() for line in result.split("\n") if line.strip()]
+    if len(lines) >= 2:
+        title = lines[0].rstrip('.')
+        summary = ' '.join(lines[1:])
+    else:
+        # Fallback: split by first period
+        parts = result.split('.', 1)
+        title = parts[0].strip().rstrip('.')
+        summary = parts[1].strip() if len(parts) > 1 else ''
+
+    return title, summary
+
 
 
 if __name__ == "__main__":
@@ -107,13 +133,13 @@ if __name__ == "__main__":
 
     messages = parse_chat(args.input_file)
     pairs = build_pairs(messages)
+    # build raw_text as before
     raw_text = " ".join(f"User: {u} AI: {a}" for u, a in pairs)
-    headline = llm_summarize(raw_text, max_length=10)
-
+    title, summary = llm_overview(raw_text)
     stats = compute_stats(pairs)
     keywords = top_keywords(pairs)
 
     print(format_summary(stats, keywords))
     print("\nTopic & Short Summary:")
-    print(f"- {headline}")
+    print("\nThe conversation is about " + title + "\n" + summary)
 
