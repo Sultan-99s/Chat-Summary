@@ -38,3 +38,16 @@ A simple Python + Flask app that ingests a User–AI conversation, parses and an
    ```bash
    git clone https://github.com/yourusername/Chat-Summary.git
    cd Chat-Summary
+
+
+# Usage Examples
+
+# 1. Command-Line Summary
+python summary.py chat.txt
+
+# 2. Run Web Interface
+export FLASK_APP=app.py
+flask run
+
+# Then open in browser:
+# http://127.0.0.1:5000
