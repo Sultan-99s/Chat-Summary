@@ -1,5 +1,11 @@
 import argparse
 from typing import List, Tuple, Dict
+import re
+from collections import Counter
+from nltk.corpus import stopwords
+import torch
+from transformers import pipeline
+
 
 def parse_chat(path: str):
     """
@@ -18,8 +24,6 @@ def parse_chat(path: str):
                 text = line[len("AI:"):].strip()
                 messages.append(("AI", text))
             else:
-                # If a line doesn’t start with a speaker tag, 
-                # assume it’s a continuation of the previous message
                 if messages:
                     speaker, prev = messages[-1]
                     messages[-1] = (speaker, prev + " " + line)
@@ -55,9 +59,6 @@ def compute_stats(pairs):
     }
 
 
-import re
-from collections import Counter
-from nltk.corpus import stopwords
 
 STOPWORDS = set(stopwords.words("english"))
 
@@ -82,16 +83,37 @@ def format_summary(stats, keywords):
     )
 
 
+
+summarizer = pipeline(
+    "summarization",
+    model="facebook/bart-large-cnn",  
+    device=0 if torch.cuda.is_available() else -1
+)
+
+def llm_summarize(text: str, max_length: int = 50) -> str:
+    """
+    Returns a very short summary (headline) of the given text.
+    """
+    result = summarizer(text, max_length=max_length, min_length=5, do_sample=False)
+    return result[0]["summary_text"].strip()
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Summarize a chat log")
     parser.add_argument("input_file", help="chat.txt")
     args = parser.parse_args()
 
+
     messages = parse_chat(args.input_file)
     pairs = build_pairs(messages)
+    raw_text = " ".join(f"User: {u} AI: {a}" for u, a in pairs)
+    headline = llm_summarize(raw_text, max_length=10)
+
     stats = compute_stats(pairs)
     keywords = top_keywords(pairs)
-    print(format_summary(stats, keywords))
 
+    print(format_summary(stats, keywords))
+    print("\nTopic & Short Summary:")
+    print(f"- {headline}")
 
