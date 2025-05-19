@@ -51,3 +51,10 @@ flask run
 
 # Then open in browser:
 # http://127.0.0.1:5000
+
+# Command-Line output
+![Screenshot from 2025-05-19 13-10-50](https://github.com/user-attachments/assets/578a74a6-11df-4619-8188-f0b7254eac88)
+
+
+# Web Interface
+![Screenshot from 2025-05-19 13-07-30](https://github.com/user-attachments/assets/484219ef-800f-40bf-9c91-1cda3e32f1b1)
