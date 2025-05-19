@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chat Summarizer</title>
+    <link rel="stylesheet" href="static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Chat Summarizer</h1>
+
+      <div class="form-section">
+        <form method="POST">
+          <textarea
+            name="conversation"
+            placeholder="Paste your chat conversation here and I'll analyze it for you..."
+          ></textarea>
+          <button type="submit">✨ Analyze Chat</button>
+        </form>
+      </div>
+
+      {% if result %}
+      <div class="output">
+        {% if result.stats %}
+        <h2>📊 Chat Statistics</h2>
+        <ul>
+          <li>
+            Total Exchanges <span>{{ result.stats.total_exchanges }}</span>
+          </li>
+          <li>User Messages <span>{{ result.stats.total_user_msgs }}</span></li>
+          <li>AI Messages <span>{{ result.stats.total_ai_msgs }}</span></li>
+        </ul>
+        {% else %}
+        <h2>📊 Analysis Results</h2>
+        <p>No clear User/AI exchanges detected; analyzed full text content.</p>
+        {% endif %}
+
+        <div class="keywords">
+          <p>
+            <strong>🏷️ Key Topics:</strong> {{ result.keywords | join(", ") }}
+          </p>
+        </div>
+
+        <h2 class="summary-title">{{ result.title }}</h2>
+        <div class="summary-text">{{ result.summary }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>
